@@ -812,14 +812,19 @@ MonoBehaviour:
   airControlMultiplier: 0.5
   jumpVelocity: 5
   jumpCutMultiplier: 0.5
-  jumpFallVelocity: 3
-  isAir: 0
+  fastFallAcceleration: 15
+  maxFallSpeed: 8
+  isFastFallActive: 0
   groundCheck: {fileID: 239115672}
   isGrounded: 0
+  wasGrounded: 0
   groundCheckRadius: 0.01
   groundLayer:
     serializedVersion: 2
     m_Bits: 8
+  coyoteTime: 0.1
+  coyoteTimeCounter: 0
+  groundJumpAvailable: 1
 --- !u!61 &885160756
 BoxCollider2D:
   m_ObjectHideFlags: 0

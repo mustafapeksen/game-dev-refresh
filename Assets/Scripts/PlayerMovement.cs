@@ -54,11 +54,21 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField]
     private bool isGrounded;
     [SerializeField]
+    private bool wasGrounded;
+    [SerializeField]
     [Min(0f)]
     private float groundCheckRadius;
     [SerializeField]
     private LayerMask groundLayer;
 
+    [Header("Coyote Time")]
+    [SerializeField]
+    [Min(0f)]
+    private float coyoteTime;
+    [SerializeField]
+    private float coyoteTimeCounter;
+    [SerializeField]
+    private bool groundJumpAvailable = true;
 
     private void Awake()
     {
@@ -84,7 +94,25 @@ public class PlayerMovement : MonoBehaviour
     {
         moveValue = moveAction.ReadValue<Vector2>();
         isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer) != null;
+      
+        if (isGrounded && !wasGrounded)
+        {
+            groundJumpAvailable = true;
+        }
+        if (isGrounded)
+        {
+            coyoteTimeCounter = coyoteTime;
+        }
+        else
+        {
+            coyoteTimeCounter = Mathf.Max(coyoteTimeCounter - Time.deltaTime, 0);
+        }
+        if (coyoteTimeCounter <= 0)
+        {
+            groundJumpAvailable = false;
+        }
 
+        wasGrounded = isGrounded;
     }
 
     private void FixedUpdate()
@@ -144,11 +172,14 @@ public class PlayerMovement : MonoBehaviour
 
     private void JumpPerformed(InputAction.CallbackContext _)
     {
-        if (!isGrounded)
+        if (coyoteTimeCounter <= 0 || !groundJumpAvailable)
             return;
         rigidbody2D.linearVelocity = new Vector2(
-            rigidbody2D.linearVelocity.x,
-            jumpVelocity);
+ rigidbody2D.linearVelocity.x,
+ jumpVelocity);
+
+        groundJumpAvailable = false;
+        coyoteTimeCounter = 0;
     }
 
     private void JumpCanceled(InputAction.CallbackContext _)
