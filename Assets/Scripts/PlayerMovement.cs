@@ -70,6 +70,16 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField]
     private bool groundJumpAvailable = true;
 
+    [Header("Jump Buffer")]
+    [SerializeField]
+    [Min(0f)]
+    private float jumpBufferTime = 0.1f;
+    [SerializeField]
+    [Min(0f)]
+    private float jumpBufferTimeCounter = 0f;
+    [SerializeField]
+    private bool isJumpHeld;
+
     private void Awake()
     {
         rigidbody2D = GetComponent<Rigidbody2D>();
@@ -94,11 +104,13 @@ public class PlayerMovement : MonoBehaviour
     {
         moveValue = moveAction.ReadValue<Vector2>();
         isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer) != null;
-      
+
         if (isGrounded && !wasGrounded)
         {
             groundJumpAvailable = true;
         }
+
+
         if (isGrounded)
         {
             coyoteTimeCounter = coyoteTime;
@@ -112,11 +124,14 @@ public class PlayerMovement : MonoBehaviour
             groundJumpAvailable = false;
         }
 
+        jumpBufferTimeCounter = Mathf.Max(jumpBufferTimeCounter - Time.deltaTime, 0);
+
         wasGrounded = isGrounded;
     }
 
     private void FixedUpdate()
     {
+        TryJump();
         float accelerationRate;
         if (moveValue.x == 0)
         {
@@ -169,28 +184,38 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-
-    private void JumpPerformed(InputAction.CallbackContext _)
+    private void TryJump()
     {
-        if (coyoteTimeCounter <= 0 || !groundJumpAvailable)
+        if (jumpBufferTimeCounter <= 0 ||
+            coyoteTimeCounter <= 0 ||
+            !groundJumpAvailable)
             return;
-        rigidbody2D.linearVelocity = new Vector2(
- rigidbody2D.linearVelocity.x,
- jumpVelocity);
+
+        float currentJumpVelocity = isJumpHeld
+            ? jumpVelocity
+            : jumpVelocity * jumpCutMultiplier;
+
+        rigidbody2D.linearVelocityY = currentJumpVelocity;
 
         groundJumpAvailable = false;
         coyoteTimeCounter = 0;
+        jumpBufferTimeCounter = 0;
+    }
+    private void JumpPerformed(InputAction.CallbackContext _)
+    {
+        isJumpHeld = true;
+        jumpBufferTimeCounter = jumpBufferTime;
     }
 
     private void JumpCanceled(InputAction.CallbackContext _)
     {
+        isJumpHeld = false;
+
         if (rigidbody2D.linearVelocityY <= 0)
             return;
-        rigidbody2D.linearVelocity = new Vector2(
-            rigidbody2D.linearVelocity.x,
-            rigidbody2D.linearVelocityY * jumpCutMultiplier);
-    }
 
+        rigidbody2D.linearVelocityY *= jumpCutMultiplier;
+    }
     private void FastFallPerformed(InputAction.CallbackContext _)
     {
         isFastFallActive = true;
@@ -205,6 +230,11 @@ public class PlayerMovement : MonoBehaviour
     {
         jumpAction.performed -= JumpPerformed;
         jumpAction.canceled -= JumpCanceled;
+
+        coyoteTimeCounter = 0;
+        jumpBufferTimeCounter = 0;
+        groundJumpAvailable = true;
+        isJumpHeld = false;
 
         isFastFallActive = false;
         fastFallAction.performed -= FastFallPerformed;
