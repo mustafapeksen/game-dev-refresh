@@ -80,6 +80,14 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField]
     private bool isJumpHeld;
 
+    [Header("Air Jump")]
+
+    [SerializeField]
+    [Min(0f)]
+    private int maxAirJumps = 1;
+    [SerializeField]
+    private int remainingAirJumps;
+
     private void Awake()
     {
         rigidbody2D = GetComponent<Rigidbody2D>();
@@ -95,8 +103,10 @@ public class PlayerMovement : MonoBehaviour
     {
         jumpAction.performed += JumpPerformed;
         jumpAction.canceled += JumpCanceled;
+
         fastFallAction.performed += FastFallPerformed;
         fastFallAction.canceled += FastFallCanceled;
+
         movementMap.Enable();
     }
 
@@ -108,6 +118,7 @@ public class PlayerMovement : MonoBehaviour
         if (isGrounded && !wasGrounded)
         {
             groundJumpAvailable = true;
+            remainingAirJumps = maxAirJumps;
         }
 
 
@@ -186,21 +197,31 @@ public class PlayerMovement : MonoBehaviour
 
     private void TryJump()
     {
-        if (jumpBufferTimeCounter <= 0 ||
-            coyoteTimeCounter <= 0 ||
-            !groundJumpAvailable)
+        if (jumpBufferTimeCounter <= 0)
             return;
 
+        if (groundJumpAvailable && coyoteTimeCounter > 0)
+        {
+            groundJumpAvailable = false;
+            coyoteTimeCounter = 0;
+        }
+        else if (remainingAirJumps > 0 && !isGrounded)
+        {
+            remainingAirJumps--;
+        }
+        else
+        {
+            return;
+        }
+
         float currentJumpVelocity = isJumpHeld
-            ? jumpVelocity
-            : jumpVelocity * jumpCutMultiplier;
+             ? jumpVelocity
+             : jumpVelocity * jumpCutMultiplier;
 
         rigidbody2D.linearVelocityY = currentJumpVelocity;
-
-        groundJumpAvailable = false;
-        coyoteTimeCounter = 0;
         jumpBufferTimeCounter = 0;
     }
+
     private void JumpPerformed(InputAction.CallbackContext _)
     {
         isJumpHeld = true;
@@ -235,6 +256,8 @@ public class PlayerMovement : MonoBehaviour
         jumpBufferTimeCounter = 0;
         groundJumpAvailable = true;
         isJumpHeld = false;
+        wasGrounded = false;
+        remainingAirJumps = 0;
 
         isFastFallActive = false;
         fastFallAction.performed -= FastFallPerformed;
