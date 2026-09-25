@@ -88,9 +88,64 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField]
     private int remainingAirJumps;
 
+    private enum WallSide
+    {
+        None,
+        Left,
+        Right
+    }
+
+    [Header("Wall Jump")]
+    [SerializeField]
+    private Transform leftWallCheck;
+    [SerializeField]
+    private float leftWallCheckRadius;
+    [SerializeField]
+    private Transform rightWallCheck;
+    [SerializeField]
+    private float rightWallCheckRadius;
+    [SerializeField]
+    private LayerMask wallLayer;
+
+    [SerializeField]
+    private WallSide currentWallSide = WallSide.None;
+    [SerializeField]
+    private WallSide previousWallSide = WallSide.None;
+    [SerializeField]
+    private WallSide lastWallJumpSide = WallSide.None;
+
+    [SerializeField]
+    [Min(0f)]
+    private float wallHangTime = 3f;
+    [SerializeField]
+    [Min(0f)]
+    private float wallHangTimeCounter;
+    [SerializeField]
+    private bool isWallHanging = false;
+    [SerializeField]
+    private bool isTouchingLeftWall = false;
+    [SerializeField]
+    private bool isTouchingRightWall = false;
+
+    [SerializeField]
+    [Min(0f)]
+    private float wallJumpHorizontalVelocity = 5f;
+
+    [SerializeField]
+    [Min(0f)]
+    private float wallJumpVerticalVelocity = 5f;
+
+    [SerializeField]
+    [Min(0f)]
+    private float wallJumpControlLockTime = 0.15f;
+    private float wallJumpControlLockCounter;
+
+    private float defaultGravityScale;
+
     private void Awake()
     {
         rigidbody2D = GetComponent<Rigidbody2D>();
+        defaultGravityScale = rigidbody2D.gravityScale;
 
         movementMap = inputActions.FindActionMap("Movement");
         moveAction = movementMap.FindAction("Move");
@@ -114,11 +169,14 @@ public class PlayerMovement : MonoBehaviour
     {
         moveValue = moveAction.ReadValue<Vector2>();
         isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer) != null;
+        isTouchingLeftWall = Physics2D.OverlapCircle(leftWallCheck.position, leftWallCheckRadius, wallLayer) != null;
+        isTouchingRightWall = Physics2D.OverlapCircle(rightWallCheck.position, rightWallCheckRadius, wallLayer) != null;
 
         if (isGrounded && !wasGrounded)
         {
             groundJumpAvailable = true;
             remainingAirJumps = maxAirJumps;
+            lastWallJumpSide = WallSide.None;
         }
 
 
@@ -135,40 +193,98 @@ public class PlayerMovement : MonoBehaviour
             groundJumpAvailable = false;
         }
 
+
+        if (isTouchingLeftWall && isTouchingRightWall)
+        {
+            currentWallSide = WallSide.None;
+        }
+        else if (isTouchingLeftWall)
+        {
+            currentWallSide = WallSide.Left;
+        }
+        else if (isTouchingRightWall)
+        {
+            currentWallSide = WallSide.Right;
+        }
+        else
+        {
+            currentWallSide = WallSide.None;
+        }
+
+
+        if (currentWallSide != previousWallSide && !isGrounded && currentWallSide != WallSide.None)
+        {
+            wallHangTimeCounter = wallHangTime;
+        }
+        else if (!isGrounded && currentWallSide != WallSide.None)
+        {
+            wallHangTimeCounter = Mathf.Max(wallHangTimeCounter - Time.deltaTime, 0);
+        }
+        else
+        {
+            wallHangTimeCounter = wallHangTime;
+        }
+
+        if (!isGrounded &&
+    currentWallSide != WallSide.None &&
+    wallHangTimeCounter > 0 && lastWallJumpSide != currentWallSide && rigidbody2D.linearVelocityY <= 0)
+        {
+            isWallHanging = true;
+        }
+        else
+        {
+            isWallHanging = false;
+        }
+
+        wallJumpControlLockCounter =
+    Mathf.Max(wallJumpControlLockCounter - Time.deltaTime, 0);
+
         jumpBufferTimeCounter = Mathf.Max(jumpBufferTimeCounter - Time.deltaTime, 0);
 
         wasGrounded = isGrounded;
+        previousWallSide = currentWallSide;
     }
 
     private void FixedUpdate()
     {
         TryJump();
-        float accelerationRate;
-        if (moveValue.x == 0)
+        if (isWallHanging)
         {
-            accelerationRate = deceleration;
-        }
-        else if (rigidbody2D.linearVelocity.x * moveValue.x < 0)
-        {
-            accelerationRate = turnAcceleration;
-        }
-        else
-        {
-            accelerationRate = acceleration;
+            rigidbody2D.linearVelocity = Vector2.zero;
+            rigidbody2D.gravityScale = 0;
+            return;
         }
 
-        if (!isGrounded)
-        {
-            accelerationRate *= airControlMultiplier;
-        }
+        rigidbody2D.gravityScale = defaultGravityScale;
 
-        Vector2 velocityValue = new Vector2(Mathf.MoveTowards(
+        if (wallJumpControlLockCounter <= 0)
+        {
+            float accelerationRate;
+            if (moveValue.x == 0)
+            {
+                accelerationRate = deceleration;
+            }
+            else if (rigidbody2D.linearVelocity.x * moveValue.x < 0)
+            {
+                accelerationRate = turnAcceleration;
+            }
+            else
+            {
+                accelerationRate = acceleration;
+            }
+
+            if (!isGrounded)
+            {
+                accelerationRate *= airControlMultiplier;
+            }
+            Vector2 velocityValue = new Vector2(Mathf.MoveTowards(
             rigidbody2D.linearVelocity.x,
             moveValue.x * speed,
             accelerationRate * Time.fixedDeltaTime),
             rigidbody2D.linearVelocity.y);
 
-        rigidbody2D.linearVelocity = velocityValue;
+            rigidbody2D.linearVelocity = velocityValue;
+        }
 
         if (isFastFallActive &&
     !isGrounded &&
@@ -193,10 +309,12 @@ public class PlayerMovement : MonoBehaviour
                 -maxFallSpeed
             );
         }
+
     }
 
     private void TryJump()
     {
+        Vector2 currentJumpVelocity = rigidbody2D.linearVelocity;
         if (jumpBufferTimeCounter <= 0)
             return;
 
@@ -204,21 +322,41 @@ public class PlayerMovement : MonoBehaviour
         {
             groundJumpAvailable = false;
             coyoteTimeCounter = 0;
+            currentJumpVelocity = new Vector2(rigidbody2D.linearVelocityX, jumpVelocity);
+        }
+        else if (currentWallSide != WallSide.None &&
+          currentWallSide != lastWallJumpSide)
+        {
+            lastWallJumpSide = currentWallSide;
+            if (currentWallSide == WallSide.Left)
+            {
+                currentJumpVelocity = new Vector2(wallJumpHorizontalVelocity, wallJumpVerticalVelocity);
+            }
+            else if (currentWallSide == WallSide.Right)
+            {
+                currentJumpVelocity = new Vector2(-wallJumpHorizontalVelocity, wallJumpVerticalVelocity);
+            }
+
+            wallJumpControlLockCounter = wallJumpControlLockTime;
+
+            isWallHanging = false;
+            wallHangTimeCounter = 0;
         }
         else if (remainingAirJumps > 0 && !isGrounded)
         {
             remainingAirJumps--;
+            currentJumpVelocity = new Vector2(rigidbody2D.linearVelocityX, jumpVelocity);
         }
         else
         {
             return;
         }
 
-        float currentJumpVelocity = isJumpHeld
-             ? jumpVelocity
-             : jumpVelocity * jumpCutMultiplier;
+        currentJumpVelocity.y = isJumpHeld
+                   ? currentJumpVelocity.y
+                   : currentJumpVelocity.y * jumpCutMultiplier;
+        rigidbody2D.linearVelocity = currentJumpVelocity;
 
-        rigidbody2D.linearVelocityY = currentJumpVelocity;
         jumpBufferTimeCounter = 0;
     }
 
@@ -259,6 +397,19 @@ public class PlayerMovement : MonoBehaviour
         wasGrounded = false;
         remainingAirJumps = 0;
 
+        currentWallSide = WallSide.None;
+        previousWallSide = WallSide.None;
+        lastWallJumpSide = WallSide.None;
+
+        wallHangTimeCounter = 0;
+        isWallHanging = false;
+
+        isTouchingLeftWall = false;
+        isTouchingRightWall = false;
+
+        wallJumpControlLockCounter = 0;
+        rigidbody2D.gravityScale = defaultGravityScale;
+
         isFastFallActive = false;
         fastFallAction.performed -= FastFallPerformed;
         fastFallAction.canceled -= FastFallCanceled;
@@ -268,8 +419,13 @@ public class PlayerMovement : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        if (groundCheck == null)
-            return;
-        Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
+        if (leftWallCheck != null)
+            Gizmos.DrawWireSphere(leftWallCheck.position, leftWallCheckRadius);
+
+        if (rightWallCheck != null)
+            Gizmos.DrawWireSphere(rightWallCheck.position, rightWallCheckRadius);
+
+        if (groundCheck != null)
+            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
     }
 }
