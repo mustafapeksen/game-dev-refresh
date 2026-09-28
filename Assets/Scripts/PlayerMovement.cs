@@ -168,50 +168,45 @@ public class PlayerMovement : MonoBehaviour
     private void Update()
     {
         moveValue = moveAction.ReadValue<Vector2>();
+
+        UpdateEnvironmentChecks();
+        HandleLanding();
+        UpdateCoyoteTime();
+        UpdateWallSide();
+        UpdateWallHangState();
+        UpdateTimers();
+
+        wasGrounded = isGrounded;
+        previousWallSide = currentWallSide;
+    }
+
+    private void UpdateEnvironmentChecks()
+    {
         isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer) != null;
         isTouchingLeftWall = Physics2D.OverlapCircle(leftWallCheck.position, leftWallCheckRadius, wallLayer) != null;
         isTouchingRightWall = Physics2D.OverlapCircle(rightWallCheck.position, rightWallCheckRadius, wallLayer) != null;
+    }
 
+    private void UpdateTimers()
+    {
+        wallJumpControlLockCounter =
+    Mathf.Max(wallJumpControlLockCounter - Time.deltaTime, 0);
+
+        jumpBufferTimeCounter = Mathf.Max(jumpBufferTimeCounter - Time.deltaTime, 0);
+    }
+
+    private void HandleLanding()
+    {
         if (isGrounded && !wasGrounded)
         {
             groundJumpAvailable = true;
             remainingAirJumps = maxAirJumps;
             lastWallJumpSide = WallSide.None;
         }
+    }
 
-
-        if (isGrounded)
-        {
-            coyoteTimeCounter = coyoteTime;
-        }
-        else
-        {
-            coyoteTimeCounter = Mathf.Max(coyoteTimeCounter - Time.deltaTime, 0);
-        }
-        if (coyoteTimeCounter <= 0)
-        {
-            groundJumpAvailable = false;
-        }
-
-
-        if (isTouchingLeftWall && isTouchingRightWall)
-        {
-            currentWallSide = WallSide.None;
-        }
-        else if (isTouchingLeftWall)
-        {
-            currentWallSide = WallSide.Left;
-        }
-        else if (isTouchingRightWall)
-        {
-            currentWallSide = WallSide.Right;
-        }
-        else
-        {
-            currentWallSide = WallSide.None;
-        }
-
-
+    private void UpdateWallHangState()
+    {
         if (currentWallSide != previousWallSide && !isGrounded && currentWallSide != WallSide.None)
         {
             wallHangTimeCounter = wallHangTime;
@@ -235,28 +230,101 @@ public class PlayerMovement : MonoBehaviour
         {
             isWallHanging = false;
         }
+    }
 
-        wallJumpControlLockCounter =
-    Mathf.Max(wallJumpControlLockCounter - Time.deltaTime, 0);
+    private void UpdateCoyoteTime()
+    {
+        if (isGrounded)
+        {
+            coyoteTimeCounter = coyoteTime;
+        }
+        else
+        {
+            coyoteTimeCounter = Mathf.Max(coyoteTimeCounter - Time.deltaTime, 0);
+        }
+        if (coyoteTimeCounter <= 0)
+        {
+            groundJumpAvailable = false;
+        }
+    }
 
-        jumpBufferTimeCounter = Mathf.Max(jumpBufferTimeCounter - Time.deltaTime, 0);
-
-        wasGrounded = isGrounded;
-        previousWallSide = currentWallSide;
+    private void UpdateWallSide()
+    {
+        if (isTouchingLeftWall && isTouchingRightWall)
+        {
+            currentWallSide = WallSide.None;
+        }
+        else if (isTouchingLeftWall)
+        {
+            currentWallSide = WallSide.Left;
+        }
+        else if (isTouchingRightWall)
+        {
+            currentWallSide = WallSide.Right;
+        }
+        else
+        {
+            currentWallSide = WallSide.None;
+        }
     }
 
     private void FixedUpdate()
     {
         TryJump();
+        if (HandleWallHangPhysics())
+            return;
+
+        ApplyHorizontalMovement();
+        ApplyFastFall();
+        ClampFallSpeed();
+
+    }
+
+    private bool HandleWallHangPhysics()
+    {
         if (isWallHanging)
         {
             rigidbody2D.linearVelocity = Vector2.zero;
             rigidbody2D.gravityScale = 0;
-            return;
+            return true;
         }
 
         rigidbody2D.gravityScale = defaultGravityScale;
+        return false;
+    }
 
+    private void ClampFallSpeed()
+    {
+        if (rigidbody2D.linearVelocityY < -maxFallSpeed)
+        {
+            rigidbody2D.linearVelocity = new Vector2(
+                rigidbody2D.linearVelocityX,
+                -maxFallSpeed
+            );
+        }
+    }
+
+    private void ApplyFastFall()
+    {
+        if (isFastFallActive &&
+    !isGrounded &&
+    rigidbody2D.linearVelocityY < 0)
+        {
+            float newYVelocity = Mathf.MoveTowards(
+                rigidbody2D.linearVelocityY,
+                -maxFallSpeed,
+                fastFallAcceleration * Time.fixedDeltaTime
+            );
+
+            rigidbody2D.linearVelocity = new Vector2(
+                rigidbody2D.linearVelocityX,
+                newYVelocity
+            );
+        }
+    }
+
+    private void ApplyHorizontalMovement()
+    {
         if (wallJumpControlLockCounter <= 0)
         {
             float accelerationRate;
@@ -285,31 +353,6 @@ public class PlayerMovement : MonoBehaviour
 
             rigidbody2D.linearVelocity = velocityValue;
         }
-
-        if (isFastFallActive &&
-    !isGrounded &&
-    rigidbody2D.linearVelocityY < 0)
-        {
-            float newYVelocity = Mathf.MoveTowards(
-                rigidbody2D.linearVelocityY,
-                -maxFallSpeed,
-                fastFallAcceleration * Time.fixedDeltaTime
-            );
-
-            rigidbody2D.linearVelocity = new Vector2(
-                rigidbody2D.linearVelocityX,
-                newYVelocity
-            );
-        }
-
-        if (rigidbody2D.linearVelocityY < -maxFallSpeed)
-        {
-            rigidbody2D.linearVelocity = new Vector2(
-                rigidbody2D.linearVelocityX,
-                -maxFallSpeed
-            );
-        }
-
     }
 
     private void TryJump()
