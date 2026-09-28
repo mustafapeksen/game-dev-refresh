@@ -901,7 +901,7 @@ Transform:
   m_GameObject: {fileID: 885160750}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -9.25, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -977,19 +977,23 @@ MonoBehaviour:
   maxAirJumps: 1
   remainingAirJumps: 0
   leftWallCheck: {fileID: 968825786}
-  leftWallCheckRadius: 0.2
+  leftWallCheckRadius: 0.01
   rightWallCheck: {fileID: 1283410810}
-  rightWallCheckRadius: 0.2
+  rightWallCheckRadius: 0.01
   wallLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   currentWallSide: 0
+  previousWallSide: 0
   lastWallJumpSide: 0
   wallHangTime: 3
-  wallHangTimeCounter: 3
+  wallHangTimeCounter: 0
   isWallHanging: 0
   isTouchingLeftWall: 0
   isTouchingRightWall: 0
+  wallJumpHorizontalVelocity: 5
+  wallJumpVerticalVelocity: 5
+  wallJumpControlLockTime: 0.15
 --- !u!61 &885160756
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -1298,7 +1302,7 @@ Transform:
   m_GameObject: {fileID: 2035218801}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 13, y: 0.5, z: 0}
+  m_LocalPosition: {x: -7.25, y: 0.5, z: 0}
   m_LocalScale: {x: 1, y: 9, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
