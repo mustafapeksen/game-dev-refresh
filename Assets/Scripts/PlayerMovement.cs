@@ -99,10 +99,12 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField]
     private Transform leftWallCheck;
     [SerializeField]
+    [Min(0)]
     private float leftWallCheckRadius;
     [SerializeField]
     private Transform rightWallCheck;
     [SerializeField]
+    [Min(0)]
     private float rightWallCheckRadius;
     [SerializeField]
     private LayerMask wallLayer;
@@ -271,16 +273,15 @@ public class PlayerMovement : MonoBehaviour
     private void FixedUpdate()
     {
         TryJump();
-        if (HandleWallHangPhysics())
+        if (TryHandleWallHangPhysics())
             return;
 
         ApplyHorizontalMovement();
         ApplyFastFall();
         ClampFallSpeed();
-
     }
 
-    private bool HandleWallHangPhysics()
+    private bool TryHandleWallHangPhysics()
     {
         if (isWallHanging)
         {
@@ -401,6 +402,7 @@ public class PlayerMovement : MonoBehaviour
         rigidbody2D.linearVelocity = currentJumpVelocity;
 
         jumpBufferTimeCounter = 0;
+        isWallHanging = false;
     }
 
     private void JumpPerformed(InputAction.CallbackContext _)
