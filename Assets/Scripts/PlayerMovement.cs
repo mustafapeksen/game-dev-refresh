@@ -362,14 +362,13 @@ public class PlayerMovement : MonoBehaviour
         if (jumpBufferTimeCounter <= 0)
             return;
 
-        if (groundJumpAvailable && coyoteTimeCounter > 0)
+        if (CanGroundJump())
         {
             groundJumpAvailable = false;
             coyoteTimeCounter = 0;
             currentJumpVelocity = new Vector2(rigidbody2D.linearVelocityX, jumpVelocity);
         }
-        else if (currentWallSide != WallSide.None &&
-          currentWallSide != lastWallJumpSide)
+        else if (CanWallJump())
         {
             lastWallJumpSide = currentWallSide;
             if (currentWallSide == WallSide.Left)
@@ -386,7 +385,7 @@ public class PlayerMovement : MonoBehaviour
             isWallHanging = false;
             wallHangTimeCounter = 0;
         }
-        else if (remainingAirJumps > 0 && !isGrounded)
+        else if (CanAirJump())
         {
             remainingAirJumps--;
             currentJumpVelocity = new Vector2(rigidbody2D.linearVelocityX, jumpVelocity);
@@ -403,6 +402,22 @@ public class PlayerMovement : MonoBehaviour
 
         jumpBufferTimeCounter = 0;
         isWallHanging = false;
+    }
+
+    private bool CanAirJump()
+    {
+        return remainingAirJumps > 0 && !isGrounded;
+    }
+
+    private bool CanWallJump()
+    {
+        return currentWallSide != WallSide.None &&
+                  currentWallSide != lastWallJumpSide;
+    }
+
+    private bool CanGroundJump()
+    {
+        return groundJumpAvailable && coyoteTimeCounter > 0;
     }
 
     private void JumpPerformed(InputAction.CallbackContext _)
