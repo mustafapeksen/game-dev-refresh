@@ -70,6 +70,14 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField]
     private bool groundJumpAvailable = true;
 
+    private enum JumpType
+    {
+        None,
+        Ground,
+        Wall,
+        Air
+    }
+
     [Header("Jump Buffer")]
     [SerializeField]
     [Min(0f)]
@@ -356,43 +364,65 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    private JumpType SelectJumpType()
+    {
+        if (CanGroundJump())
+        {
+            return JumpType.Ground;
+        }
+        else if (CanWallJump())
+        {
+            return JumpType.Wall;
+        }
+        else if (CanAirJump())
+        {
+            return JumpType.Air;
+        }
+        else
+        {
+            return JumpType.None;
+        }
+    }
+
     private void TryJump()
     {
         Vector2 currentJumpVelocity = rigidbody2D.linearVelocity;
         if (jumpBufferTimeCounter <= 0)
             return;
 
-        if (CanGroundJump())
-        {
-            groundJumpAvailable = false;
-            coyoteTimeCounter = 0;
-            currentJumpVelocity = new Vector2(rigidbody2D.linearVelocityX, jumpVelocity);
-        }
-        else if (CanWallJump())
-        {
-            lastWallJumpSide = currentWallSide;
-            if (currentWallSide == WallSide.Left)
-            {
-                currentJumpVelocity = new Vector2(wallJumpHorizontalVelocity, wallJumpVerticalVelocity);
-            }
-            else if (currentWallSide == WallSide.Right)
-            {
-                currentJumpVelocity = new Vector2(-wallJumpHorizontalVelocity, wallJumpVerticalVelocity);
-            }
+        JumpType jumpType = SelectJumpType();
 
-            wallJumpControlLockCounter = wallJumpControlLockTime;
+        switch (jumpType)
+        {
+            case JumpType.None:
+                return;
+            case JumpType.Ground:
+                groundJumpAvailable = false;
+                coyoteTimeCounter = 0;
+                currentJumpVelocity = new Vector2(rigidbody2D.linearVelocityX, jumpVelocity);
+                break;
+            case JumpType.Wall:
+                lastWallJumpSide = currentWallSide;
+                if (currentWallSide == WallSide.Left)
+                {
+                    currentJumpVelocity = new Vector2(wallJumpHorizontalVelocity, wallJumpVerticalVelocity);
+                }
+                else if (currentWallSide == WallSide.Right)
+                {
+                    currentJumpVelocity = new Vector2(-wallJumpHorizontalVelocity, wallJumpVerticalVelocity);
+                }
 
-            isWallHanging = false;
-            wallHangTimeCounter = 0;
-        }
-        else if (CanAirJump())
-        {
-            remainingAirJumps--;
-            currentJumpVelocity = new Vector2(rigidbody2D.linearVelocityX, jumpVelocity);
-        }
-        else
-        {
-            return;
+                wallJumpControlLockCounter = wallJumpControlLockTime;
+
+                isWallHanging = false;
+                wallHangTimeCounter = 0;
+                break;
+            case JumpType.Air:
+                remainingAirJumps--;
+                currentJumpVelocity = new Vector2(rigidbody2D.linearVelocityX, jumpVelocity);
+                break;
+            default:
+                return;
         }
 
         currentJumpVelocity.y = isJumpHeld
