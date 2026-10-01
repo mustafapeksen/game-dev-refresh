@@ -968,7 +968,7 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 8
-  coyoteTime: 0.1
+  coyoteTime: 0.3
   coyoteTimeCounter: 0
   groundJumpAvailable: 1
   jumpBufferTime: 0.1
