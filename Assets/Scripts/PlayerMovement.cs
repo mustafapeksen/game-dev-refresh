@@ -65,7 +65,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField]
     [Min(0f)]
     private float coyoteTime;
-    [SerializeField]
+    [Min(0f)]
     private float coyoteTimeCounter;
     [SerializeField]
     private bool groundJumpAvailable = true;
@@ -82,7 +82,6 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField]
     [Min(0f)]
     private float jumpBufferTime = 0.1f;
-    [SerializeField]
     [Min(0f)]
     private float jumpBufferTimeCounter = 0f;
     [SerializeField]
@@ -93,7 +92,6 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField]
     [Min(0f)]
     private int maxAirJumps = 1;
-    [SerializeField]
     private int remainingAirJumps;
 
     private enum WallSide
@@ -127,7 +125,6 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField]
     [Min(0f)]
     private float wallHangTime = 3f;
-    [SerializeField]
     [Min(0f)]
     private float wallHangTimeCounter;
     [SerializeField]
@@ -151,6 +148,8 @@ public class PlayerMovement : MonoBehaviour
     private float wallJumpControlLockCounter;
 
     private float defaultGravityScale;
+
+    private bool isRespawning;
 
     private void Awake()
     {
@@ -212,6 +211,7 @@ public class PlayerMovement : MonoBehaviour
             groundJumpAvailable = true;
             remainingAirJumps = maxAirJumps;
             lastWallJumpSide = WallSide.None;
+            isRespawning = false;
         }
     }
 
@@ -280,6 +280,9 @@ public class PlayerMovement : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (isRespawning)
+            return;
+
         TryJump();
         if (TryHandleWallHangPhysics())
             return;
@@ -452,6 +455,8 @@ public class PlayerMovement : MonoBehaviour
 
     private void JumpPerformed(InputAction.CallbackContext _)
     {
+        if (isRespawning)
+            return;
         isJumpHeld = true;
         jumpBufferTimeCounter = jumpBufferTime;
     }
@@ -467,6 +472,8 @@ public class PlayerMovement : MonoBehaviour
     }
     private void FastFallPerformed(InputAction.CallbackContext _)
     {
+        if (isRespawning)
+            return;
         isFastFallActive = true;
     }
 
@@ -475,6 +482,19 @@ public class PlayerMovement : MonoBehaviour
         isFastFallActive = false;
     }
 
+    public void BeginRespawn()
+    {
+        isRespawning = true;
+
+        rigidbody2D.linearVelocity = Vector2.zero;
+        rigidbody2D.gravityScale = defaultGravityScale;
+
+        isWallHanging = false;
+        jumpBufferTimeCounter = 0;
+        wallJumpControlLockCounter = 0;
+        isFastFallActive = false;
+        isJumpHeld = false;
+    }
     private void OnDisable()
     {
         jumpAction.performed -= JumpPerformed;
