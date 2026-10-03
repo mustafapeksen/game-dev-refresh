@@ -23,6 +23,7 @@ public class CheckpointSystem : MonoBehaviour
         if (collision.CompareTag("Checkpoint"))
         {
             SetCheckpointPosition(collision);
+            collision.GetComponent<Checkpoint>().Activate();
         }
     }
 
