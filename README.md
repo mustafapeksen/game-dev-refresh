@@ -21,7 +21,7 @@ The project currently includes movement mechanics, jumping systems, wall interac
 
 ## Tech Stack
 
-- Unity
+- Unity 6 (6000.6.0f1)
 - C#
 - Unity Input System
 - Rigidbody2D / 2D Physics
