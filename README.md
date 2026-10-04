@@ -49,4 +49,4 @@ The current focus is on building small gameplay systems, improving code structur
 
 ## License
 
-License information will be added separately.
+This project is licensed under the MIT License. See the `LICENSE` file for details.
